@@ -3,7 +3,7 @@ from tkinter import ttk
 import pybullet as p
 import pybullet_data
 import time
-from threading import Thread
+from threading import Event
 
 from AutoAlgo1 import AutoAlgo1
 from CPU import CPU
@@ -25,15 +25,10 @@ class SimulationWindow:
         p.setGravity(0, 0, -9.8)
 
         # Algorithm and painter
-        self.map = "p15.png"  # Provide a valid path
+        self.map = "p11.png"  # Provide a valid path
         self.algo1 = AutoAlgo1(self.map)
         self.painter = Painter(self.root, self.algo1)
         self.painter.place(x=0, y=0, width=1200, height=700)
-
-        # Start simulation in a separate thread
-        self.simulation_running = True
-        self.simulation_thread = Thread(target=self.run_simulation)
-        self.simulation_thread.start()
 
         # Create buttons
         self.create_buttons()
@@ -56,6 +51,10 @@ class SimulationWindow:
         self.info_cpu = CPU(6, "update_info")
         self.info_cpu.add_function(self.update_info)
         self.info_cpu.play()
+
+        # Run simulation in main thread using Tkinter's after method
+        self.simulation_running = True
+        self.run_simulation()
 
     def create_buttons(self):
         # Start/Pause button
@@ -101,15 +100,14 @@ class SimulationWindow:
                 y_position += 100
 
     def run_simulation(self):
-        while self.simulation_running:
+        if self.simulation_running:
             p.stepSimulation()
-            time.sleep(1. / 240.)
+            self.root.after(4, self.run_simulation)  # Run simulation step every 4 ms (approx. 240 Hz)
 
     def toggle_simulation(self):
         self.simulation_running = not self.simulation_running
         if self.simulation_running:
-            self.simulation_thread = Thread(target=self.run_simulation)
-            self.simulation_thread.start()
+            self.run_simulation()
 
     def toggle_map(self):
         print("Toggle map action triggered")
