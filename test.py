@@ -1,122 +1,157 @@
-import pybullet as p
-import pybullet_data
+import pygame
 import numpy as np
-import time
-import tkinter as tk
+from PIL import Image
 
-# Define sensor directions and distances
+# Initialize pygame
+pygame.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Drone Path Simulation")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+
+# Define the drone
+drone_radius = 10
+drone_pos = np.array([70, 70])  # Adjusted starting position on a white path
+drone_direction = np.array([1, 0])  # Initial direction (moving right)
+
+# Load the map image and convert to binary map
+map_image = Image.open('DroneSimulator-master/Maps/p11.png').convert('L')
+binary_map = np.array(map_image)
+binary_map[binary_map > 0] = 1  # Path
+binary_map[binary_map == 0] = 0  # Walls
+
+# Make the frame black to treat it as a wall
+binary_map[0, :] = 0
+binary_map[-1, :] = 0
+binary_map[:, 0] = 0
+binary_map[:, -1] = 0
+
+
+def find_initial_position(binary_map):
+    """Find the first white pixel in the binary map and return its coordinates."""
+    for y in range(binary_map.shape[0]):
+        for x in range(binary_map.shape[1]):
+            if binary_map[y, x] == 1:
+                return np.array([x, y])
+    raise ValueError("No valid starting position found in the map.")
+
+
+# Ensure initial position is on the path
+if binary_map[int(drone_pos[1]), int(drone_pos[0])] == 0:
+    raise ValueError("Initial position is on a wall. Please set it on a white path.")
+
+# Sensor directions
 sensor_directions = {
-    "up": [0, 0, 1],
-    "down": [0, 0, -1],
-    "forward": [1, 0, 0],
-    "backward": [-1, 0, 0],
-    "right": [0, -1, 0],
-    "left": [0, 1, 0]
+    "forward": [1, 0],
+    "backward": [-1, 0],
+    "right": [0, 1],
+    "left": [0, -1]
 }
 
-
-# Function to calculate distance using ray casting
-def calculate_distance(sensor_pos, sensor_dir, max_distance=10):
-    ray_start = sensor_pos
-    ray_end = np.add(sensor_pos, np.multiply(sensor_dir, max_distance))
-    ray_info = p.rayTest(ray_start, ray_end)
-
-    hit_object_id, hit_position = ray_info[0][0], ray_info[0][3]
-
-    if hit_object_id != -1:
-        distance = np.linalg.norm(np.subtract(hit_position, sensor_pos))
-    else:
-        distance = max_distance
-
-    return distance
+# Set shorter sensor range
+sensor_range = 20
 
 
-# Function to get sensor distances
-def get_sensor_distances(drone_id):
-    position, orientation = p.getBasePositionAndOrientation(drone_id)
-    rotation_matrix = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
+def calculate_distance(drone_pos, direction, max_distance=sensor_range):
+    """Calculate distance from the drone to the nearest wall in the given direction."""
+    min_distance = max_distance
+    for d in range(1, max_distance + 1):
+        check_pos = drone_pos + np.array(direction) * d
+        x, y = int(check_pos[0]), int(check_pos[1])
 
+        if x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT or binary_map[y, x] == 0:
+            min_distance = d - 1
+            break
+    return min_distance
+
+
+def draw_environment():
+    """Draw the environment including walls and the drone."""
+    screen.fill(WHITE)
+
+    # Draw the map
+    for y in range(binary_map.shape[0]):
+        for x in range(binary_map.shape[1]):
+            color = WHITE if binary_map[y, x] == 1 else BLACK
+            screen.set_at((x, y), color)
+
+    # Draw drone
+    pygame.draw.circle(screen, RED, drone_pos.astype(int), drone_radius)
+
+    # Draw sensor rays
+    for direction in sensor_directions.values():
+        end_pos = drone_pos + np.array(direction) * calculate_distance(drone_pos, direction)
+        pygame.draw.line(screen, RED, drone_pos, end_pos, 1)
+
+    pygame.display.flip()
+
+
+def get_sensor_distances(drone_pos):
+    """Get sensor distances for the drone."""
     distances = {}
     for key, direction in sensor_directions.items():
-        world_direction = rotation_matrix.dot(direction)
-        distances[key] = calculate_distance(position, world_direction)
-
+        distances[key] = calculate_distance(drone_pos, direction)
     return distances
 
 
-def move_drone(direction):
-    global drone_pos
-    if direction == "forward":
-        drone_pos[0] += 0.1
-    elif direction == "backward":
-        drone_pos[0] -= 0.1
-    elif direction == "left":
-        drone_pos[1] += 0.1
-    elif direction == "right":
-        drone_pos[1] -= 0.1
-    elif direction == "up":
-        drone_pos[2] += 0.1
-    elif direction == "down":
-        drone_pos[2] -= 0.1
-
-    p.resetBasePositionAndOrientation(drone_id, drone_pos, p.getQuaternionFromEuler([0, 0, 0]))
+# Path memory to avoid cycles
+path_memory = []
 
 
-def main():
-    global drone_id, drone_pos
+def move_drone(sensor_data):
+    """Move the drone based on sensor data to avoid walls and prevent cycles."""
+    global drone_pos, drone_direction
+    step_size = 8  # Increase step size for faster movement
+    min_distance = 10  # Minimum distance to maintain from walls
+    path_memory_size = 10  # Size of the path memory to detect cycles
 
-    # Initialize PyBullet
-    p.connect(p.GUI)
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    p.setGravity(0, 0, -9.8)
+    # Priority order for directions: forward, right, down, left, backward
+    priority_directions = ["forward", "right", "left", "backward"]
 
-    # Load a plane and drone URDF
-    plane_id = p.loadURDF("plane.urdf")
-    drone_id = p.loadURDF("r2d2.urdf", basePosition=[0, 0, 1])
-    drone_pos = [0, 0, 1]
+    for direction in priority_directions:
+        if sensor_data[direction] >= min_distance:
+            drone_direction = np.array(sensor_directions[direction])
+            new_pos = drone_pos + drone_direction * step_size
 
-    # Create some obstacles for the drone to sense
-    p.loadURDF("block.urdf", basePosition=[2, 0, 1])  # Forward obstacle
-    p.loadURDF("block.urdf", basePosition=[-2, 0, 1])  # Backward obstacle
-    p.loadURDF("block.urdf", basePosition=[0, 2, 1])  # Left obstacle
-    p.loadURDF("block.urdf", basePosition=[0, -2, 1])  # Right obstacle
-    p.loadURDF("block.urdf", basePosition=[0, 0, 3])  # Up obstacle
+            # Check if the new position is valid and not in path memory
+            if (0 <= new_pos[0] < WIDTH and 0 <= new_pos[1] < HEIGHT and
+                    binary_map[int(new_pos[1]), int(new_pos[0])] == 1 and
+                    tuple(new_pos) not in path_memory):
 
-    # Run the simulation in a separate thread
-    def run_simulation():
-        while True:
-            p.stepSimulation()
-            distances = get_sensor_distances(drone_id)
-            print("Sensor distances:", distances)
-            time.sleep(0.1)
+                # Update path memory
+                path_memory.append(tuple(drone_pos))
+                if len(path_memory) > path_memory_size:
+                    path_memory.pop(0)
 
-    import threading
-    sim_thread = threading.Thread(target=run_simulation)
-    sim_thread.daemon = True
-    sim_thread.start()
-
-    # Create a simple GUI with buttons to control the drone
-    root = tk.Tk()
-    root.title("Drone Control")
-
-    btn_forward = tk.Button(root, text="Forward", command=lambda: move_drone("forward"))
-    btn_backward = tk.Button(root, text="Backward", command=lambda: move_drone("backward"))
-    btn_left = tk.Button(root, text="Left", command=lambda: move_drone("left"))
-    btn_right = tk.Button(root, text="Right", command=lambda: move_drone("right"))
-    btn_up = tk.Button(root, text="Up", command=lambda: move_drone("up"))
-    btn_down = tk.Button(root, text="Down", command=lambda: move_drone("down"))
-
-    btn_forward.grid(row=0, column=1)
-    btn_left.grid(row=1, column=0)
-    btn_backward.grid(row=1, column=1)
-    btn_right.grid(row=1, column=2)
-    btn_up.grid(row=2, column=1)
-    btn_down.grid(row=3, column=1)
-
-    root.mainloop()
-
-    p.disconnect()
+                drone_pos = new_pos
+                return
 
 
-if __name__ == "__main__":
-    main()
+# Main loop
+running = True
+clock = pygame.time.Clock()
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Update environment
+    draw_environment()
+
+    # Get sensor distances
+    distances = get_sensor_distances(drone_pos)
+    print("Sensor distances:", distances)
+
+    # Move the drone based on sensor distances
+    move_drone(distances)
+
+    clock.tick(60)
+
+pygame.quit()
