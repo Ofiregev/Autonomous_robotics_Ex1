@@ -66,7 +66,7 @@ for y in range(height):
 drone_pos = random.choice(list(G.nodes()))
 drone_radius = 10  # Increase the radius of the drone
 drone_step = node_size  # Move by node_size
-battery = 480  # 8 minutes in seconds
+battery = 20  # 8 minutes in seconds
 
 # Track visited nodes
 visited = set()
@@ -178,6 +178,9 @@ clock = pygame.time.Clock()
 running = True
 start_time = time.time()
 
+# Initialize a flag for backtracking
+backtracking = False
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -185,13 +188,18 @@ while running:
 
     screen.blit(map_surface, (0, 0))
 
-    # Draw the visited path
-    for node in visited:
-        pygame.draw.circle(screen, BLUE, node, 2)
+    # # Draw the visited path
+    # for node in visited:
+    #     if backtracking and node in stack:
+    #         pygame.draw.circle(screen, (240, 120, 88), node, 2)  # Draw visited nodes in yellow during backtracking
+    #     else:
+    #         pygame.draw.circle(screen, BLUE, node, 2)
 
     draw_drone(drone_pos)
 
     # Move the drone with DFS-based exploration
+    if not stack:
+        break
     new_pos = move_drone_dfs(drone_pos)
     if detect_wall(new_pos, 'left') or detect_wall(new_pos, 'right') or detect_wall(new_pos, 'up') or detect_wall(
             new_pos, 'down'):
@@ -206,13 +214,26 @@ while running:
     # Check battery status
     elapsed_time = time.time() - start_time
     battery_remaining = max(0, battery - elapsed_time)
-    if battery_remaining == 0:
+    if battery_remaining <= battery / 2:  # When battery reaches 50%
+        print("Battery level is at 50%. Backtracking to starting point...")
+        backtracking = True  # Set backtracking flag to True
+        # Reverse DFS over the visited nodes list
+        for i in range(len(stack) - 2, -1, -1):
+            if detect_wall(stack[i], 'left') or detect_wall(stack[i], 'right') or detect_wall(stack[i], 'up') or detect_wall(
+                    stack[i], 'down'):
+                continue  # Skip nodes that are blocked by walls
+            drone_pos = stack[i]  # Set drone position to the node
+            stack = stack[:i + 1]  # Remove nodes after this node in the stack
+            break
+    elif battery_remaining == 0:
         print("Battery empty. Landing...")
         running = False
     else:
         print(f"Battery remaining: {battery_remaining:.2f} seconds")
+        backtracking = False  # Reset backtracking flag when not backtracking
 
     pygame.display.flip()
     clock.tick(UPDATE_RATE)
 
 pygame.quit()
+
