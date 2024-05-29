@@ -53,6 +53,9 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 
+# Font
+font = pygame.font.SysFont(None, 24)
+
 # Draw the map
 map_surface = pygame.Surface((width, height))
 for y in range(height):
@@ -188,12 +191,12 @@ while running:
 
     screen.blit(map_surface, (0, 0))
 
-    # # Draw the visited path
-    # for node in visited:
-    #     if backtracking and node in stack:
-    #         pygame.draw.circle(screen, (240, 120, 88), node, 2)  # Draw visited nodes in yellow during backtracking
-    #     else:
-    #         pygame.draw.circle(screen, BLUE, node, 2)
+    # Draw the visited path
+    for node in visited:
+        if backtracking and node in stack:
+            pygame.draw.circle(screen, (240, 120, 88), node, 2)  # Draw visited nodes in yellow during backtracking
+        else:
+            pygame.draw.circle(screen, BLUE, node, 2)
 
     draw_drone(drone_pos)
 
@@ -232,8 +235,12 @@ while running:
         print(f"Battery remaining: {battery_remaining:.2f} seconds")
         backtracking = False  # Reset backtracking flag when not backtracking
 
+    # Display sensor readings and battery remaining
+    text = f"Sensor readings: Left: {d_left:.2f}, Right: {d_right:.2f}, Up: {d_up:.2f}, Down: {d_down:.2f} | Battery remaining: {battery_remaining:.2f} seconds"
+    text_surface = font.render(text, True, RED)
+    screen.blit(text_surface, (10, 10))
+
     pygame.display.flip()
     clock.tick(UPDATE_RATE)
 
 pygame.quit()
-
