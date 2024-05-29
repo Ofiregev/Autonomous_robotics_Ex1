@@ -1,3 +1,5 @@
+import threading
+
 import pygame
 import numpy as np
 import cv2
@@ -5,6 +7,7 @@ import networkx as nx
 import random
 import time
 import math
+import concurrent.futures
 
 # Load the map image
 image_path = 'p11.png'  # Replace with your image path
@@ -78,11 +81,23 @@ visited.add(drone_pos)
 # DFS stack
 stack = [drone_pos]
 
+# Initialize sensor properties
+SENSOR_RANGE = 300  # in pixels (3 meters)
+SENSOR_ERROR = 0.02  # 2% error
+UPDATE_RATE = 10  # Hz
 
+# Desired distance from obstacles
+desired_distance = 100  # 100 pixels (1 meter)
+
+# Define a lock for accessing shared resources
+lock = threading.Lock()
+
+
+# Function to draw the drone
 def draw_drone(pos):
     pygame.draw.circle(screen, RED, pos, drone_radius)
 
-
+# Function to detect walls
 def detect_wall(pos, direction):
     x, y = pos
     if direction == 'left':
@@ -103,7 +118,7 @@ def detect_wall(pos, direction):
                 return True
     return False
 
-
+# Function to move the drone with DFS-based exploration
 def move_drone_dfs(pos):
     x, y = pos
     directions = ['left', 'right', 'up', 'down']
@@ -121,17 +136,19 @@ def move_drone_dfs(pos):
             new_pos = (x, y + drone_step)
 
         if new_pos:
-            visited.add(new_pos)
-            stack.append(new_pos)
+            with lock:
+                visited.add(new_pos)
+                stack.append(new_pos)
             return new_pos
 
     # If all directions are blocked or visited, backtrack
-    stack.pop()
+    with lock:
+        stack.pop()
     if stack:
         return stack[-1]
     return pos
 
-
+# Function to avoid walls
 def avoid_walls(pos):
     x, y = pos
     wall_directions = []
@@ -157,13 +174,7 @@ def avoid_walls(pos):
 
     return (x, y)
 
-
-# Initialize sensor properties
-SENSOR_RANGE = 300  # in pixels (3 meters)
-SENSOR_ERROR = 0.02  # 2% error
-UPDATE_RATE = 10  # Hz
-
-
+# Function to get sensor readings
 def get_sensor_readings(pos):
     x, y = pos
     d_left = min(SENSOR_RANGE, sum(binary_map[y, max(0, x - i)] == 255 for i in range(SENSOR_RANGE))) * (
@@ -175,7 +186,7 @@ def get_sensor_readings(pos):
                 1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
     return [d_left, d_right, d_up, d_down]
 
-
+# Function to calculate reward
 def reward_function(sensor_readings, desired_distance):
     d_left, d_right, d_up, d_down = sensor_readings
 
@@ -187,16 +198,22 @@ def reward_function(sensor_readings, desired_distance):
 
     return reward
 
+# Function to move the drone
+def move_drone():
+    global drone_pos, stack
+    if not stack:
+        return
+    new_pos = move_drone_dfs(drone_pos)
+    if detect_wall(new_pos, 'left') or detect_wall(new_pos, 'right') or detect_wall(new_pos, 'up') or detect_wall(
+            new_pos, 'down'):
+        new_pos = avoid_walls(new_pos)
+    drone_pos = new_pos
 
+# Main loop
 clock = pygame.time.Clock()
 running = True
 start_time = time.time()
-
-# Initialize a flag for backtracking
-backtracking = False
-
-# Desired distance from obstacles
-desired_distance = 100  # 100 pixels (1 meter)
+backtracking = False  # Initialize a flag for backtracking
 
 while running:
     for event in pygame.event.get():
@@ -207,14 +224,8 @@ while running:
 
     draw_drone(drone_pos)
 
-    # Move the drone with DFS-based exploration
-    if not stack:
-        break
-    new_pos = move_drone_dfs(drone_pos)
-    if detect_wall(new_pos, 'left') or detect_wall(new_pos, 'right') or detect_wall(new_pos, 'up') or detect_wall(
-            new_pos, 'down'):
-        new_pos = avoid_walls(new_pos)
-    drone_pos = new_pos
+    # Move the drone
+    move_drone()
 
     # Get sensor readings
     sensor_readings = get_sensor_readings(drone_pos)
