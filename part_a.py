@@ -69,7 +69,7 @@ for y in range(height):
 drone_pos = random.choice(list(G.nodes()))
 drone_radius = 10  # Increase the radius of the drone
 drone_step = node_size  # Move by node_size
-battery = 20  # 8 minutes in seconds
+battery = 480  # 8 minutes in seconds
 
 # Track visited nodes
 visited = set()
@@ -170,11 +170,22 @@ def get_sensor_readings(pos):
                 1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
     d_right = min(SENSOR_RANGE, sum(binary_map[y, min(width - 1, x + i)] == 255 for i in range(SENSOR_RANGE))) * (
                 1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
-    d_up = min(SENSOR_RANGE, sum(binary_map[max(0, y - i), x] == 255 for i in range(SENSOR_RANGE))) * (
-                1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
+    d_up = min(SENSOR_RANGE, sum(binary_map[max(0, y - i), x] == 255 for i in range(SENSOR_RANGE))) * (1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
     d_down = min(SENSOR_RANGE, sum(binary_map[min(height - 1, y + i), x] == 255 for i in range(SENSOR_RANGE))) * (
                 1 + random.uniform(-SENSOR_ERROR, SENSOR_ERROR))
     return [d_left, d_right, d_up, d_down]
+
+
+def reward_function(sensor_readings, desired_distance):
+    d_left, d_right, d_up, d_down = sensor_readings
+
+    # Calculate the error based on sensor readings
+    error = abs(desired_distance - min(d_left, d_right, d_up, d_down))
+
+    # Define a reward function
+    reward = 1 / (1 + error)  # Higher reward for smaller error
+
+    return reward
 
 
 clock = pygame.time.Clock()
@@ -184,19 +195,15 @@ start_time = time.time()
 # Initialize a flag for backtracking
 backtracking = False
 
+# Desired distance from obstacles
+desired_distance = 100  # 100 pixels (1 meter)
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
     screen.blit(map_surface, (0, 0))
-
-    # Draw the visited path
-    for node in visited:
-        if backtracking and node in stack:
-            pygame.draw.circle(screen, (240, 120, 88), node, 2)  # Draw visited nodes in yellow during backtracking
-        else:
-            pygame.draw.circle(screen, BLUE, node, 2)
 
     draw_drone(drone_pos)
 
@@ -213,6 +220,10 @@ while running:
     sensor_readings = get_sensor_readings(drone_pos)
     d_left, d_right, d_up, d_down = sensor_readings
     print(f"Sensor readings (in pixels): Left: {d_left:.2f}, Right: {d_right:.2f}, Up: {d_up:.2f}, Down: {d_down:.2f}")
+
+    # Calculate reward
+    reward = reward_function(sensor_readings, desired_distance)
+    print(f"Reward: {reward:.2f}")
 
     # Check battery status
     elapsed_time = time.time() - start_time
@@ -235,8 +246,8 @@ while running:
         print(f"Battery remaining: {battery_remaining:.2f} seconds")
         backtracking = False  # Reset backtracking flag when not backtracking
 
-    # Display sensor readings and battery remaining
-    text = f"Sensor readings: Left: {d_left:.2f}, Right: {d_right:.2f}, Up: {d_up:.2f}, Down: {d_down:.2f} | Battery remaining: {battery_remaining:.2f} seconds"
+    # Display sensor readings, reward, and battery remaining
+    text = f"Sensor readings: Left: {d_left:.2f}, Right: {d_right:.2f}, Up: {d_up:.2f}, Down: {d_down:.2f} | Reward: {reward:.2f} | Battery remaining: {battery_remaining:.2f} seconds"
     text_surface = font.render(text, True, RED)
     screen.blit(text_surface, (10, 10))
 
