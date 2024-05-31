@@ -5,9 +5,18 @@ import networkx as nx
 import random
 import time
 
+# Check if an argument is provided for the image path
+if len(sys.argv) != 2:
+    print("Usage: python script.py <image_path>")
+    sys.exit(1)
+
 # Load the map image
-image_path = 'p11.png'  # Replace with your image path
+image_path = sys.argv[1]
 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+# # Load the map image
+# image_path = 'p11.png'  # Replace with your image path
+# image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Threshold the image to create a binary map (0 for walls, 255 for open space)
 _, binary_map = cv2.threshold(image, 128, 255, cv2.THRESH_BINARY)
