@@ -1,13 +1,9 @@
 import threading
-
 import pygame
-import numpy as np
 import cv2
 import networkx as nx
 import random
 import time
-import math
-import concurrent.futures
 
 # Load the map image
 image_path = 'p11.png'  # Replace with your image path
@@ -49,6 +45,7 @@ if not nx.is_connected(G):
 pygame.init()
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Drone Simulation")
+pygame.display.set_icon(pygame.image.load('./src/drone.png'))
 
 # Colors
 BLACK = (0, 0, 0)
@@ -260,7 +257,7 @@ while running:
     # Display sensor readings, reward, and battery remaining
     text = f"Sensor readings: Left: {d_left:.2f}, Right: {d_right:.2f}, Up: {d_up:.2f}, Down: {d_down:.2f} | Reward: {reward:.2f} | Battery remaining: {battery_remaining:.2f} seconds"
     text_surface = font.render(text, True, RED)
-    screen.blit(text_surface, (10, 10))
+    screen.blit(text_surface, (25, 15))
 
     pygame.display.flip()
     clock.tick(UPDATE_RATE)
