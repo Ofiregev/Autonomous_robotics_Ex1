@@ -4,19 +4,21 @@ import cv2
 import networkx as nx
 import random
 import time
+import sys
 
-# Check if an argument is provided for the image path
-if len(sys.argv) != 2:
-    print("Usage: python script.py <image_path>")
-    sys.exit(1)
+# # Check if an argument is provided for the image path
+# if len(sys.argv) != 2:
+#     print("Usage: python script.py <image_path>")
+#     sys.exit(1)
+#
+# # Load the map image
+# image_path = sys.argv[1]
+# image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Load the map image
-image_path = sys.argv[1]
+image_path = 'p11.png'  # Replace with your image path
 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-# # Load the map image
-# image_path = 'p11.png'  # Replace with your image path
-# image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Threshold the image to create a binary map (0 for walls, 255 for open space)
 _, binary_map = cv2.threshold(image, 128, 255, cv2.THRESH_BINARY)
@@ -76,9 +78,12 @@ for y in range(height):
 
 # Drone properties
 drone_pos = random.choice(list(G.nodes()))
-drone_radius = 10  # Increase the radius of the drone
 drone_step = node_size  # Move by node_size
 battery = 480  # 8 minutes in seconds
+
+# Load the drone image and scale it
+drone_image = pygame.image.load('./src/drone.png')
+drone_image = pygame.transform.scale(drone_image, (node_size+5, node_size+5))
 
 # Track visited nodes
 visited = set()
@@ -98,28 +103,28 @@ desired_distance = 100  # 100 pixels (1 meter)
 # Define a lock for accessing shared resources
 lock = threading.Lock()
 
-
 # Function to draw the drone
 def draw_drone(pos):
-    pygame.draw.circle(screen, RED, pos, drone_radius)
+    x, y = pos
+    screen.blit(drone_image, (x - node_size // 2, y - node_size // 2))
 
 # Function to detect walls
 def detect_wall(pos, direction):
     x, y = pos
     if direction == 'left':
-        for dx in range(1, drone_radius + 1):
+        for dx in range(1, node_size + 1):
             if (x - dx) < 0 or binary_map[y, x - dx] == 0:
                 return True
     elif direction == 'right':
-        for dx in range(1, drone_radius + 1):
+        for dx in range(1, node_size + 1):
             if (x + dx) >= width or binary_map[y, x + dx] == 0:
                 return True
     elif direction == 'up':
-        for dy in range(1, drone_radius + 1):
+        for dy in range(1, node_size + 1):
             if (y - dy) < 0 or binary_map[y - dy, x] == 0:
                 return True
     elif direction == 'down':
-        for dy in range(1, drone_radius + 1):
+        for dy in range(1, node_size + 1):
             if (y + dy) >= height or binary_map[y + dy, x] == 0:
                 return True
     return False
