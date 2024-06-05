@@ -52,7 +52,7 @@ if not nx.is_connected(G):
 pygame.init()
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Drone Simulation")
-pygame.display.set_icon(pygame.image.load('./src/drone.png'))
+pygame.display.set_icon(pygame.image.load('./drone.png'))
 
 # Colors
 BLACK = (0, 0, 0)
