@@ -2,7 +2,7 @@
 
 # Drone Simulation
 
-This project simulates a drone exploring a map using Depth-First Search (DFS) algorithm. The drone avoids walls and navigates through open spaces in the map. The simulation uses `pygame` for rendering, `opencv-python` for image processing, and `networkx` for graph management.
+This project simulates a drone exploring a map using a depth-first search (DFS) algorithm. The drone navigates through open spaces while avoiding walls, gathering sensor data, and returning to the starting point if the battery level gets low. The simulation is visualized using Pygame.
 
 ## Requirements
 
@@ -34,15 +34,14 @@ This project simulates a drone exploring a map using Depth-First Search (DFS) al
 2. Run the simulation:
 
     ```sh
-    python run.py <name_of_the_map>
+    python solution.py <name_of_the_map>
     ```
 
     Replace `<name_of_the_map>` with the path to your map image file (e.g., `maps/p11.png`).
 
 ## Project Structure
 
-- `run.py`: The main script to run the simulation.
-- `drone_simulation.py`: Contains the core functionality and helper functions.
+- `solution.py`: The main script to run the simulation.
 - `requirements.txt`: List of dependencies.
 
 ## Example
