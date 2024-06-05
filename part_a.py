@@ -7,13 +7,9 @@ import time
 import sys
 
 # # Check if an argument is provided for the image path
-# if len(sys.argv) != 2:
-#     print("Usage: python script.py <image_path>")
-#     sys.exit(1)
-#
-# # Load the map image
-# image_path = sys.argv[1]
-# image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+if len(sys.argv) != 2:
+    print("Usage: python script.py <image_path>")
+    sys.exit(1)
 
 # Load the map image
 image_path = sys.argv[1]  # Replace with your image path
