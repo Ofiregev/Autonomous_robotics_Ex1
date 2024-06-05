@@ -7,9 +7,7 @@ This project simulates a drone exploring a map using a depth-first search (DFS) 
 
 ## Requirements
 
-- Python 3.x
 - `pygame`
-- `numpy`
 - `opencv-python`
 - `networkx`
 
