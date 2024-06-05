@@ -1,7 +1,7 @@
 # Autonomous_robotics_Ex1
 
 # Drone Simulation
-<img width="1291" alt="image" src="https://github.com/Ofiregev/Autonomous_robotics_Ex1/assets/92684730/5cf69a68-4959-4ed5-a394-0c6409bc541d">
+<img width="1292" alt="image" src="https://github.com/Ofiregev/Autonomous_robotics_Ex1/assets/92684730/0a207fbb-11f0-4ff0-89a1-376e59061ea1">
 
 This project simulates a drone exploring a map using a depth-first search (DFS) algorithm. The drone navigates through open spaces while avoiding walls, gathering sensor data, and returning to the starting point if the battery level gets low. The simulation is visualized using Pygame.
 
