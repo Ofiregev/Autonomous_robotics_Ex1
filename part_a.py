@@ -16,7 +16,7 @@ import sys
 # image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 # Load the map image
-image_path = 'p11.png'  # Replace with your image path
+image_path = sys.argv[1]  # Replace with your image path
 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
 
